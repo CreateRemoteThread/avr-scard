@@ -175,12 +175,30 @@ void main()
 	
 	putchar('#');	
 	putchar('\n');
+	
+	unsigned int trigger_delay = 0;
+	
+	int idle = 0;
 	while(1)
 	{
+		
 		char ch = getchar();
 		if (ch == 'R')
 		{
 			// pulse RESET signal LOW
+			rxLen = 0;
+			TCCR1B=0;
+			TCCR1A=0;
+			TCNT1=0;
+			__asm__ __volatile__ ("nop");
+			__asm__ __volatile__ ("nop");
+			__asm__ __volatile__ ("nop");
+			TCCR1A = 0x40;
+			OCR1A = 1;
+			TCCR1B = 0x09;
+			__asm__ __volatile__ ("nop");
+			__asm__ __volatile__ ("nop");
+			__asm__ __volatile__ ("nop");
 			digitalWrite(RESET, LOW);
 			_delay_ms(50);
 			digitalWrite(RESET, HIGH);
@@ -189,6 +207,19 @@ void main()
 		else if (ch == 'r')
 		{
 			// pulse RESET signal HIGH
+			rxLen = 0;
+			TCCR1B=0;
+			TCCR1A=0;
+			TCNT1=0;
+			__asm__ __volatile__ ("nop");
+			__asm__ __volatile__ ("nop");
+			__asm__ __volatile__ ("nop");
+			TCCR1A = 0x40;
+			OCR1A = 1;
+			TCCR1B = 0x09;
+			__asm__ __volatile__ ("nop");
+			__asm__ __volatile__ ("nop");
+			__asm__ __volatile__ ("nop");
 			digitalWrite(RESET, HIGH);
 			_delay_ms(50);
 			digitalWrite(RESET, LOW);
@@ -205,6 +236,11 @@ void main()
 				txBuf[txHead] = getchar();
 			}
 			sendAPDU(txLen,txBuf);
+			unsigned int delay_us_timer = 0;
+			for(delay_us_timer = 0;delay_us_timer < trigger_delay;delay_us_timer++)
+			{
+				_delay_us(1);
+			}
 			PORTC &= ~(1 << TRIGGER);
 		}
 		else if(ch == 'd')
@@ -218,6 +254,13 @@ void main()
 				putchar(rxBuf[rxHead]);
 			}
 			rxLen = 0;
+		}
+		else if(ch == 'w')
+		{
+			unsigned char b1 = getchar();
+			unsigned char b2 = getchar();
+			trigger_delay = (b1 * 0x100) + b2;
+			putchar('!');
 		}
 	}
 }
@@ -251,11 +294,11 @@ void setup() {
 	pinMode(CLOCK, OUTPUT);
 	TCCR1B = 0x00; // disable timer 1
 	TCCR1A = 0x40; // normal mode, toggle OC1A on overflow
-	#ifdef DOUBLE_RATE
-	OCR1A = 0; // count to 0 for a clock of 16 MHz / (2*(0+1)) = 8Mhz
-	#else
+	// #ifdef DOUBLE_RATE
+	// OCR1A = 0; // count to 0 for a clock of 16 MHz / (2*(0+1)) = 8Mhz
+	// #else
 	OCR1A = 1; // count to 1 for a clock of 16 MHz / (2*(1+1)) = 4Mhz
-	#endif
+	// #endif
 	TCCR1B = 0x09; // reset timer on OCR1 match, prescaler 1, enable.
 
 	#ifdef RAW_DUMP
