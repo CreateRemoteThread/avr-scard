@@ -138,6 +138,9 @@ unsigned char uart_receive( void )
 	return UDR0;
 }
 
+unsigned int trigger_delay = 0;
+unsigned int trigger_delay_ms = 0;
+
 void sendAPDU(int length, char *buffer)
 {
 	int i = 0;
@@ -152,6 +155,16 @@ void sendAPDU(int length, char *buffer)
 	for(;i < length;i++)
 	{
 		sendISOChar(buffer[i]);
+	}
+	
+	unsigned int delay_us_timer = 0;
+	for(delay_us_timer = 0;delay_us_timer < trigger_delay;delay_us_timer++)
+	{
+		_delay_us(1);
+	}
+	for(delay_us_timer = 0;delay_us_timer < trigger_delay_ms;delay_us_timer++)
+	{
+		_delay_ms(1);
 	}
 	PORTC |= (1 << TRIGGER);
 }
@@ -176,12 +189,10 @@ void main()
 	putchar('#');	
 	putchar('\n');
 	
-	unsigned int trigger_delay = 0;
 	
 	int idle = 0;
 	while(1)
 	{
-		
 		char ch = getchar();
 		if (ch == 'R')
 		{
@@ -236,11 +247,7 @@ void main()
 				txBuf[txHead] = getchar();
 			}
 			sendAPDU(txLen,txBuf);
-			unsigned int delay_us_timer = 0;
-			for(delay_us_timer = 0;delay_us_timer < trigger_delay;delay_us_timer++)
-			{
-				_delay_us(1);
-			}
+			
 			PORTC &= ~(1 << TRIGGER);
 		}
 		else if(ch == 'd')
@@ -261,6 +268,17 @@ void main()
 			unsigned char b2 = getchar();
 			trigger_delay = (b1 * 0x100) + b2;
 			putchar('!');
+			putchar((trigger_delay >> 8 )& 0xFF);
+			putchar(trigger_delay & 0xFF);
+		}
+		else if(ch == 'W')
+		{
+			unsigned char b1 = getchar();
+			unsigned char b2 = getchar();
+			trigger_delay_ms = (b1 * 0x100) + b2;
+			putchar('!');
+			putchar((trigger_delay_ms >> 8 )& 0xFF);
+			putchar(trigger_delay_ms & 0xFF);
 		}
 	}
 }
